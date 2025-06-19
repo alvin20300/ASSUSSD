@@ -92,7 +92,7 @@ Would you like health tips?
 });
 
 // Start server
-const PORT = 3000;
+const PORT = 443;
 app.listen(PORT, () => {
     console.log(`✅ USSD app running at http://localhost:${PORT}/ussd`);
 });
