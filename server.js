@@ -5,32 +5,41 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 
 app.post('/ussd', (req, res) => {
-    const { sessionId, phoneNumber, text } = req.body;
+    let { sessionId, phoneNumber, text } = req.body;
 
     let response = '';
-    const inputs = text.split('*');
+    let inputs = text === '' ? [] : text.split('*');
 
     console.log(`Session: ${sessionId}, Phone: ${phoneNumber}, Text: ${text}, Inputs:`, inputs);
 
-    if (text === '') {
+    // Handle Back option: if last input is '0', remove it and go one step back
+    if (inputs.length > 0 && inputs[inputs.length - 1] === '0') {
+        inputs.pop(); // remove the '0'
+        text = inputs.join('*');
+    }
+
+    // Use updated inputs length after handling back
+    const step = inputs.length;
+
+    if (step === 0) {
         // Step 1: Language selection
         response = `CON Welcome to Health BMI App
 1. English
 2. Kinyarwanda`;
-    } else if (inputs.length === 1) {
+    } else if (step === 1) {
         // Step 2: Ask for weight
         const lang = inputs[0];
         response = lang === '2'
-            ? 'CON Andika ibiro byawe (KG):'
-            : 'CON Enter your weight in KG:';
-    } else if (inputs.length === 2) {
+            ? 'CON Andika ibiro byawe (KG):\n0. Subira inyuma'
+            : 'CON Enter your weight in KG:\n0. Back';
+    } else if (step === 2) {
         // Step 3: Ask for height
         const lang = inputs[0];
         response = lang === '2'
-            ? 'CON Andika uburebure bwawe (CM):'
-            : 'CON Enter your height in CM:';
-    } else if (inputs.length === 3) {
-        // Step 4: Calculate BMI
+            ? 'CON Andika uburebure bwawe (CM):\n0. Subira inyuma'
+            : 'CON Enter your height in CM:\n0. Back';
+    } else if (step === 3) {
+        // Step 4: Calculate BMI and ask for tips
         const lang = inputs[0];
         const weight = parseFloat(inputs[1]);
         const height = parseFloat(inputs[2]);
@@ -52,13 +61,15 @@ app.post('/ussd', (req, res) => {
                 ? `CON BMI yawe ni ${bmi.toFixed(1)} (${status})
 Ukeneye inama z’ubuzima?
 1. Yego
-2. Oya`
+2. Oya
+0. Subira inyuma`
                 : `CON Your BMI is ${bmi.toFixed(1)} (${status})
 Would you like health tips?
 1. Yes
-2. No`;
+2. No
+0. Back`;
         }
-    } else if (inputs.length === 4) {
+    } else if (step === 4) {
         // Step 5: Show tips or end
         const lang = inputs[0];
         const weight = parseFloat(inputs[1]);
