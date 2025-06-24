@@ -15,7 +15,12 @@ app.post('/ussd', (req, res) => {
     // Handle Back option: if last input is '0', remove it and go one step back
     if (inputs.length > 0 && inputs[inputs.length - 1] === '0') {
         inputs.pop(); // remove the '0'
+        if (inputs.length > 0) {
+            inputs.pop(); // remove previous input to go back one step
+        }
         text = inputs.join('*');
+        // Update inputs array after removing back steps
+        inputs = text === '' ? [] : text.split('*');
     }
 
     // Use updated inputs length after handling back
@@ -120,5 +125,5 @@ Would you like health tips?
 // Start server
 const PORT = 443;
 app.listen(PORT, () => {
-    console.log(`✅ USSD app running at http://localhost:${PORT}/ussd`);
+    console.log(` USSD app running at http://localhost:${PORT}/ussd`);
 });
