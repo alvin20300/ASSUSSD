@@ -17,10 +17,8 @@ app.post('/ussd', async (req, res) => {
 
   let response = '';
   let inputs = text === '' ? [] : text.split('*');
-
   const step = inputs.length;
 
-  // Store session if it doesn't exist
   await pool.query(
     `INSERT INTO session (session_id, phone_number, status)
      VALUES ($1, $2, 'active')
@@ -28,27 +26,37 @@ app.post('/ussd', async (req, res) => {
     [sessionId, phoneNumber]
   );
 
+  const lang = inputs[0];
+
   if (step === 0) {
     response = `CON Welcome to Health BMI App
 1. English
 2. Kinyarwanda`;
+
   } else if (step === 1) {
-    response = inputs[0] === '2'
+    response = lang === '2'
       ? 'CON Andika ibiro byawe (KG):\n0. Subira inyuma'
       : 'CON Enter your weight in KG:\n0. Back';
+
   } else if (step === 2) {
-    response = inputs[0] === '2'
+    response = lang === '2'
       ? 'CON Andika uburebure bwawe (CM):\n0. Subira inyuma'
       : 'CON Enter your height in CM:\n0. Back';
+
   } else if (step === 3) {
-    const lang = inputs[0];
+    response = lang === '2'
+      ? 'CON Andika imyaka yawe:\n0. Subira inyuma'
+      : 'CON Enter your age:\n0. Back';
+
+  } else if (step === 4) {
     const weight = parseFloat(inputs[1]);
     const height = parseFloat(inputs[2]);
+    const age = parseInt(inputs[3]);
 
-    if (isNaN(weight) || isNaN(height)) {
+    if (isNaN(weight) || isNaN(height) || isNaN(age)) {
       response = lang === '2'
         ? 'END Ibyinjijwe si byo. Andika imibare nyayo.'
-        : 'END Invalid input. Please enter numbers.';
+        : 'END Invalid input. Please enter valid numbers.';
     } else {
       const bmi = weight / ((height / 100) ** 2);
 
@@ -68,18 +76,17 @@ Would you like health tips?
 1. Yes
 2. No`;
 
-      // Save measurement
       const language = lang === '2' ? 'Kinyarwanda' : 'English';
+
       await pool.query(
-        `INSERT INTO measurement (session_id, phone_number, language, weight, height, bmi, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [sessionId, phoneNumber, language, weight, height, bmi, status]
+        `INSERT INTO measurement (session_id, phone_number, language, weight, height, bmi, status, age)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [sessionId, phoneNumber, language, weight, height, bmi, status, age]
       );
     }
-  } else if (step === 4) {
-    const lang = inputs[0];
-    const tips = inputs[3];
-    let tip = '';
+
+  } else if (step === 5) {
+    const tips = inputs[4];
 
     const result = await pool.query(
       `UPDATE measurement SET tips_requested = $1 WHERE session_id = $2 RETURNING status, bmi`,
@@ -92,6 +99,7 @@ Would you like health tips?
         : 'END Unable to save your data.';
     } else {
       const { status, bmi } = result.rows[0];
+      let tip = '';
 
       if (tips === '1') {
         switch (status) {
